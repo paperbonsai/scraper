@@ -175,7 +175,8 @@
         progressContainer.style.display = "block"; // Zobrazit progress bar a status
 
         const url = urlInput.value;
-        const socket = new WebSocket(`ws://127.0.0.1:8000/ws`);
+        const socket = new WebSocket(`wss://scraper-6gmlatgcv-paperbonsais-projects.vercel.app/ws`);
+
 
         socket.onopen = function () {
           socket.send(JSON.stringify({ url: url }));
