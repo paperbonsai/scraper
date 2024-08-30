@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>URL Scraper</title>
+    <!-- Google Fonts - IBM Plex Mono -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Custom Styles -->
+    <style>
+      body {
+        font-family: "IBM Plex Mono", monospace;
+        background: #f8f9fa;
+        color: #333;
+        margin: 0;
+        padding: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+      }
+
+      #container {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        width: 100%;
+        max-width: 600px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 400;
+        text-align: center;
+        color: #363636;
+      }
+
+      form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        height: 45px;
+      }
+
+      .form-control {
+        height: auto;
+        padding: 10px;
+      }
+
+      .btn-submit {
+        height: 45px;
+        padding: 10px 20px;
+        line-height: 1.5;
+        font-size: 16px;
+        vertical-align: middle;
+      }
+
+      #progressContainer {
+        display: none; /* Skrytý dokud není obsah */
+      }
+
+      #progressBar {
+        height: 30px;
+        text-align: center;
+        color: white;
+        transition: width 0.5s ease-in-out;
+      }
+
+      pre {
+        display: none; /* Skrytý dokud není obsah */
+        background: #f9f9f9;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 14px;
+        color: #333;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 200px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-top: 10px;
+      }
+
+      #summary p {
+        margin: 0;
+        font-size: 14px;
+      }
+      #summary {
+        text-align: center;
+        padding-bottom: 15px;
+      }
+
+      #status {
+        padding-top: 15px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container" class="container">
+      <h1>URL Scraper</h1>
+      <form id="urlForm">
+        <div class="form-group flex-grow-1">
+          <input
+            type="text"
+            class="form-control"
+            id="urlInput"
+            placeholder="Vložte URL adresu"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-dark btn-submit">
+          Odeslat
+        </button>
+      </form>
+      <div id="progressContainer">
+        <div id="summary">
+          <p>Celkový počet záznamů: <span id="totalRecords">0</span></p>
+          <p>
+            Zpracovávám stránku: <span id="currentPage">0</span> /
+            <span id="totalPages">0</span>
+          </p>
+        </div>
+        <div class="progress">
+          <div
+            id="progressBar"
+            class="progress-bar progress-bar-striped progress-bar-animated"
+            role="progressbar"
+            style="width: 0%"
+          ></div>
+        </div>
+        <p id="status" class="text-center"></p>
+      </div>
+      <pre id="result"></pre>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+      const urlForm = document.getElementById("urlForm");
+      const urlInput = document.getElementById("urlInput");
+      const progressContainer = document.getElementById("progressContainer");
+      const resultPre = document.getElementById("result");
+      const totalRecordsSpan = document.getElementById("totalRecords");
+      const totalPagesSpan = document.getElementById("totalPages");
+      const currentPageSpan = document.getElementById("currentPage");
+      const progressBar = document.getElementById("progressBar");
+      const statusText = document.getElementById("status");
+
+      urlForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        resultPre.textContent = "";
+        resultPre.style.display = "none"; // Skryje pole výsledků
+        progressBar.style.width = "0%";
+        progressBar.classList.add(
+          "progress-bar-striped",
+          "progress-bar-animated"
+        ); // Přidat animaci
+        statusText.textContent = "";
+        progressContainer.style.display = "block"; // Zobrazit progress bar a status
+
+        const url = urlInput.value;
+        const socket = new WebSocket(`ws://127.0.0.1:8000/ws`);
+
+        socket.onopen = function () {
+          socket.send(JSON.stringify({ url: url }));
+        };
+
+        socket.onmessage = function (event) {
+          const data = JSON.parse(event.data);
+
+          if (data.error) {
+            statusText.textContent = `Error: ${data.error}`;
+            statusText.classList.add("text-danger");
+          } else if (data.total_records) {
+            totalRecordsSpan.textContent = data.total_records;
+            totalPagesSpan.textContent = data.total_pages;
+          }
+
+          if (data.current_page) {
+            currentPageSpan.textContent = data.current_page;
+          }
+
+          if (data.progress) {
+            progressBar.style.width = data.progress + "%";
+            if (data.progress === 100) {
+              statusText.textContent = "Generuji výpis...";
+              progressBar.classList.remove(
+                "progress-bar-striped",
+                "progress-bar-animated"
+              ); // Odstranit animaci
+            }
+          }
+
+          if (data.status) {
+            statusText.textContent = "Úspěšně dokončeno";
+            statusText.classList.remove("text-danger");
+            statusText.classList.add("text-success");
+          }
+
+          if (data.data) {
+            resultPre.textContent = JSON.stringify(data.data, null, 2);
+            resultPre.style.display = "block"; // Zobrazí pole výsledků
+          }
+        };
+
+        socket.onclose = function (event) {
+          if (event.wasClean) {
+            console.log(
+              `[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`
+            );
+          } else {
+            console.error("[close] Connection died");
+          }
+        };
+
+        socket.onerror = function (error) {
+          console.error(`[error] ${error.message}`);
+        };
+      });
+    </script>
+  </body>
+</html>
