@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
-from scraper import process_url
+from .scraper import process_url
 
 app = FastAPI()
 
