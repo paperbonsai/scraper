@@ -3,19 +3,16 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "buildCommand": "pip install -r requirements.txt"
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/main.py"
-    }
-  ],
-  "probes": [
-    {
-      "path": "/api",
-      "status": 200
     }
   ]
 }
